@@ -1,5 +1,7 @@
 # BallisticNG Ship Stat Converter
 
+<img width="1236" height="676" alt="image" src="https://github.com/user-attachments/assets/9d71781b-c782-4a53-96d1-4db928d060b2" />
+
 Frontend ship stat to BallisticNG XML converter for custom ship tuning and prefab stat generation.
 
 ## What it does
