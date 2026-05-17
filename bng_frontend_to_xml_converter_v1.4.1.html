@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BallisticNG Frontend Stats to XML Converter</title>
+  <style>
+    :root {
+      --bg: #66645d;
+      --panel: #747169;
+      --panel-2: #807d75;
+      --text: #10100f;
+      --muted: #24231f;
+      --line: #141410;
+      --accent: #00557a;
+      --accent-bright: #55b9e7;
+      --accent-2: #e8e6dc;
+      --danger: #7b1b1b;
+      --ok: #0d4f35;
+      --code: #0b0c0c;
+      --code-text: #e6e3d7;
+      --shadow: rgba(0, 0, 0, .28);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Arial Narrow", "Helvetica Neue Condensed", "Eurostile", "Rajdhani", Arial, sans-serif;
+      letter-spacing: .02em;
+      line-height: 1.35;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,.035) 1px, transparent 1px);
+      background-size: 100% 4px, 4px 100%;
+      mix-blend-mode: multiply;
+      opacity: .35;
+    }
+    main { width: min(1180px, calc(100vw - 32px)); margin: 26px auto; }
+    .topbar { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+    .info-btn {
+      width: 34px; height: 34px; border-radius: 0; border: 2px solid var(--line);
+      background: var(--line); color: var(--accent-bright); font-weight: 900; cursor: pointer;
+      box-shadow: 5px 5px 0 var(--shadow);
+    }
+    h1 {
+      font-size: 24px;
+      line-height: 1;
+      margin: 0 0 6px;
+      color: var(--accent-2);
+      text-transform: lowercase;
+      font-family: "Arial Narrow", "Helvetica Neue Condensed", "Roboto Condensed", "Liberation Sans Narrow", Arial, sans-serif;
+      font-stretch: condensed;
+      font-weight: 700;
+      letter-spacing: .16em;
+      text-shadow: 2px 2px 0 rgba(0,0,0,.35);
+    }
+    p { color: var(--text); margin: 0; }
+    .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; align-items: stretch; }
+    .card {
+      background: var(--panel);
+      border: 2px solid var(--line);
+      border-radius: 0;
+      padding: 16px;
+      box-shadow: 8px 8px 0 var(--shadow);
+    }
+    .output-card { display: flex; flex-direction: column; min-height: 0; }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--text);
+      margin: 12px 0 5px;
+      text-transform: uppercase;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    input, select {
+      width: 100%; min-height: 40px;
+      background: #d8d5c8;
+      border: 2px solid var(--line);
+      color: var(--text);
+      border-radius: 0;
+      padding: 9px 10px;
+      font-size: 15px;
+      font-weight: 800;
+      font-family: inherit;
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.08);
+    }
+    input:focus, select:focus { outline: 3px solid var(--line); outline-offset: 2px; box-shadow: 0 0 0 5px var(--accent-bright); }
+    select {
+      appearance: none;
+      -webkit-appearance: none;
+      padding-right: 48px;
+      cursor: pointer;
+      background-color: #d8d5c8;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%2310100f' d='M6 10h20L16 23z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
+      background-size: 30px 30px;
+    }
+    input[type=number] { -moz-appearance: textfield; }
+    input[type=number]::-webkit-outer-spin-button,
+    input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+    .stat-control input[type=number] { margin-bottom: 7px; }
+    .stepper { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+    .step-btn {
+      min-height: 40px;
+      padding: 0;
+      border-radius: 0;
+      background: var(--line);
+      color: var(--accent-2);
+      border: 2px solid var(--line);
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .step-btn:hover, .step-btn:focus { background: var(--accent-bright); color: var(--line); outline: 3px solid var(--line); outline-offset: 1px; }
+    .step-btn span { transform: translateY(-1px); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    button {
+      border: 2px solid var(--line);
+      border-radius: 0;
+      padding: 10px 13px;
+      background: var(--accent);
+      color: var(--accent-2);
+      font-weight: 900;
+      cursor: pointer;
+      font-family: inherit;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    button.secondary { background: var(--line); color: var(--accent-2); border: 2px solid var(--line); }
+    button.secondary:hover { background: var(--accent-bright); color: var(--line); }
+    .error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 10px; font-weight: 800; }
+    .ok { color: var(--ok); font-size: 13px; min-height: 18px; margin-top: 10px; font-weight: 800; }
+    .summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 104px; gap: 10px; margin-bottom: 12px; flex: 0 0 auto; }
+    .summary div {
+      background: #d8d5c8;
+      border: 2px solid var(--line);
+      border-radius: 0;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 800;
+      line-height: 1.35;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      overflow: hidden;
+      color: var(--text);
+    }
+    .summary strong {
+      display: block;
+      color: var(--accent);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: .09em;
+      font-size: 17px;
+      line-height: 1;
+      font-weight: 900;
+    }
+    textarea {
+      width: 100%; flex: 1 1 auto; min-height: 0; resize: none; overflow: auto;
+      background: var(--code);
+      border: 2px solid var(--line);
+      color: var(--code-text);
+      border-radius: 0;
+      padding: 14px;
+      font-family: "Courier New", Consolas, Monaco, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre;
+      scrollbar-color: var(--accent-2) var(--code);
+    }
+    .note { font-size: 12px; color: var(--text); margin-top: 12px; font-weight: 700; }
+    dialog {
+      width: min(620px, calc(100vw - 32px));
+      max-height: min(760px, calc(100vh - 32px));
+      border: 2px solid var(--line);
+      border-radius: 0;
+      background: var(--panel);
+      color: var(--text);
+      padding: 16px;
+      overflow: hidden;
+      box-shadow: 12px 12px 0 var(--shadow);
+    }
+    dialog::backdrop { background: rgba(0,0,0,.55); }
+    .modal-shell { display: flex; flex-direction: column; max-height: calc(min(760px, 100vh - 32px) - 32px); }
+    .modal-head { display: flex; justify-content: flex-end; align-items: center; padding: 0 0 8px; border-bottom: 0; flex: 0 0 auto; }
+    .modal-body { padding: 0 0 16px; overflow-y: auto; min-height: 0; scrollbar-color: var(--accent-2) var(--panel); }
+    .tabs { display: flex; gap: 6px; padding: 0; margin-bottom: 16px; border-bottom: 2px solid var(--line); flex: 0 0 auto; }
+    .tab-btn { background: #d8d5c8; color: var(--text); border: 2px solid var(--line); border-bottom: 0; border-radius: 0; padding: 9px 13px; }
+    .tab-btn.active { background: var(--accent-bright); color: var(--line); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .modal-body ul, .modal-body ol { margin-top: 8px; }
+    .modal-body h2 { margin: 0; font-size: 20px; text-transform: lowercase; letter-spacing: .08em; color: var(--accent-2); text-shadow: 2px 2px 0 rgba(0,0,0,.25); }
+    .modal-body h3 { margin: 18px 0 6px; font-size: 15px; color: var(--line); text-transform: uppercase; letter-spacing: .08em; }
+    .modal-body p, .modal-body li { color: var(--text); font-size: 13px; font-weight: 700; }
+    .close-btn { width: 38px; height: 38px; padding: 0; border-radius: 0; background: var(--line); color: var(--accent-2); border: 2px solid var(--line); font-size: 24px; line-height: 1; }
+    .close-btn:hover { background: var(--accent-bright); color: var(--line); }
+    @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } .summary { grid-template-columns: 1fr; } }
+
+
+    /* v11 left configuration theme update */
+    .config-panel {
+      background: #76736a;
+      border: 2px solid var(--line);
+      box-shadow: none;
+      padding: 10px;
+    }
+    .config-inner {
+      display: grid;
+      gap: 7px;
+    }
+    .config-row {
+      display: grid;
+      grid-template-columns: 132px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+    }
+    .config-row label {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1;
+      color: #10100f;
+      font-weight: 800;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+    }
+    .config-row input,
+    .config-row select {
+      min-height: 24px;
+      height: 24px;
+      padding: 1px 7px;
+      background: #918d83;
+      border: 2px solid #111;
+      color: #10100f;
+      font-size: 14px;
+      font-weight: 800;
+      box-shadow: none;
+    }
+    .config-row select {
+      padding-right: 34px;
+      background-color: #918d83;
+      background-position: right 5px center;
+      background-size: 24px 24px;
+    }
+    .stat-input-wrap {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 54px;
+      gap: 4px;
+      align-items: center;
+    }
+    .stat-control input[type=number] { margin-bottom: 0; }
+    .compact-stepper {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2px;
+    }
+    .compact-stepper .step-btn {
+      min-height: 24px;
+      height: 24px;
+      border: 2px solid #111;
+      background: #d8d5c8;
+      color: #10100f;
+      font-size: 17px;
+      line-height: 1;
+      box-shadow: none;
+    }
+    .compact-stepper .step-btn:hover,
+    .compact-stepper .step-btn:focus {
+      background: var(--accent-bright);
+      color: #10100f;
+      outline: 2px solid #111;
+      outline-offset: 1px;
+    }
+    .config-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .config-buttons button {
+      min-height: 36px;
+      padding: 4px 8px;
+      border: 2px solid #111;
+      background: #e2ded1;
+      color: #10100f;
+      font-size: 13px;
+      line-height: 1.05;
+      font-weight: 900;
+      box-shadow: none;
+      text-transform: uppercase;
+    }
+    .config-buttons button#resetBtn {
+      background: #6f6a62;
+      color: #f0ede2;
+    }
+    .config-panel .note {
+      margin-top: 62px;
+      color: #151515;
+      font-size: 12px;
+      line-height: 1.3;
+      font-weight: 700;
+    }
+    .config-panel .error,
+    .config-panel .ok { margin-top: 4px; min-height: 14px; }
+
+  
+/* XML output panel visual update */
+#xmlOutput,
+#xmlPreview,
+.xml-output,
+.xml-preview,
+.xml-box,
+pre.xml-output,
+textarea.xml-output,
+textarea#xmlOutput {
+  background: #79c8f2 !important;
+  color: #000 !important;
+}
+#xmlOutput::placeholder,
+#xmlPreview::placeholder {
+  color: #222 !important;
+}
+
+
+/* Section labels for converted outputs */
+.output-card {
+  position: relative;
+}
+.section-label {
+  display: inline-block;
+  background: #111;
+  color: #ffffff;
+  border: 2px solid #111;
+  padding: 6px 14px;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.stats-label {
+  margin: -2px 0 -2px 0;
+}
+.xml-label {
+  margin: 8px 0 0 0;
+}
+.xml-help {
+  display: block;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  margin-top: 3px;
+  text-transform: none;
+}
+
+
+/* Larger XML action buttons */
+.config-buttons {
+  grid-template-columns: 1fr 1fr !important;
+  gap: 6px !important;
+  margin-top: 10px !important;
+}
+.config-buttons #copyBtn,
+.config-buttons #downloadBtn {
+  min-height: 44px !important;
+  font-size: 15px !important;
+  line-height: 1.05 !important;
+  padding: 6px 10px !important;
+  background: #ece8de !important;
+  color: #10100f !important;
+}
+.config-buttons #resetBtn {
+  grid-column: 1 / -1 !important;
+  justify-self: end !important;
+  width: 86px !important;
+  min-height: 28px !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+}
+
+
+/* Level amplifier icon */
+.info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.level-amp-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+.level-amp-icon rect,
+.level-amp-icon line {
+  vector-effect: non-scaling-stroke;
+}
+
+
+/* Larger, clearer interactive level amplifier button */
+.info-btn {
+  width: 46px !important;
+  height: 46px !important;
+  background: #10100f !important;
+  border: 3px solid #e8e6dc !important;
+  box-shadow: 5px 5px 0 rgba(0,0,0,.35) !important;
+  cursor: pointer !important;
+  position: relative;
+}
+.info-btn:hover,
+.info-btn:focus {
+  background: #55b9e7 !important;
+  border-color: #10100f !important;
+  outline: 3px solid #10100f !important;
+  outline-offset: 3px !important;
+}
+.info-btn .level-amp-icon .amp-bg {
+  transition: fill 0.18s ease;
+}
+.info-btn .level-amp-icon .amp-bar {
+  transition: fill 0.18s ease, stroke 0.18s ease;
+}
+.info-btn:hover .level-amp-icon .amp-bg,
+.info-btn:focus .level-amp-icon .amp-bg {
+  fill: #55b9e7 !important;
+}
+.info-btn:hover .level-amp-icon .amp-bar,
+.info-btn:focus .level-amp-icon .amp-bar {
+  fill: #f0c419 !important;
+  stroke: #10100f !important;
+}
+.level-amp-icon {
+  width: 32px !important;
+  height: 32px !important;
+}
+.level-amp-icon rect,
+.level-amp-icon line {
+  stroke-width: 2.5px !important;
+}
+
+
+/* Move information button to top right */
+.topbar {
+  position: relative !important;
+  padding-right: 62px !important;
+}
+.info-btn {
+  position: absolute !important;
+  top: 0 !important;
+  right: 0 !important;
+  z-index: 10 !important;
+}
+
+
+.level-amp-icon {
+  width: 26px !important;
+  height: 26px !important;
+  display: block;
+}
+.info-btn {
+  min-width: 40px !important;
+  min-height: 40px !important;
+}
+
+
+/* Rounded blue info icon */
+.info-btn {
+  width: 46px !important;
+  height: 46px !important;
+  min-width: 46px !important;
+  min-height: 46px !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+.level-amp-icon {
+  width: 42px !important;
+  height: 42px !important;
+}
+.info-btn:hover,
+.info-btn:focus-visible {
+  outline: 3px solid #111 !important;
+  outline-offset: 3px !important;
+}
+
+
+/* Remove circular hover shell from top-right icon */
+.info-btn,
+.info-btn:hover,
+.info-btn:focus,
+.info-btn:focus-visible {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.info-btn:hover,
+.info-btn:focus,
+.info-btn:focus-visible {
+  outline: none !important;
+}
+
+.info-btn:hover .level-amp-icon,
+.info-btn:focus .level-amp-icon,
+.info-btn:focus-visible .level-amp-icon {
+  outline: none !important;
+  filter: none !important;
+}
+
+
+/* Converted prefab stats info buttons */
+.summary strong {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 8px !important;
+  width: auto !important;
+}
+
+.stat-info-btn {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  padding: 0;
+  border: 2px solid #111;
+  background: transparent;
+  color: #111;
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 900;
+  text-transform: none;
+  letter-spacing: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.stat-info-btn:hover,
+.stat-info-btn:focus-visible {
+  background: #55b9e7;
+  color: #111;
+  outline: 2px solid #111;
+  outline-offset: 2px;
+}
+
+#statInfoDialog h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #111;
+  text-shadow: none;
+}
+
+#statInfoDialog p {
+  color: #111;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+
+/* Detailed converted stat explanation modal */
+#statInfoDialog {
+  width: min(760px, calc(100vw - 32px));
+  max-height: min(780px, calc(100vh - 32px));
+}
+
+#statInfoDialog .modal-shell {
+  max-height: calc(min(780px, 100vh - 32px) - 32px);
+}
+
+#statInfoDialog .modal-body {
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+#statInfoDialog h2 {
+  margin: 0 0 12px;
+}
+
+#statInfoDialog h3 {
+  margin: 18px 0 6px;
+  color: #111;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+#statInfoDialog p,
+#statInfoDialog li {
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+#statInfoDialog code {
+  display: block;
+  white-space: pre-wrap;
+  background: #d8d5c8;
+  border: 2px solid #111;
+  padding: 8px;
+  margin: 8px 0;
+  color: #111;
+  font-family: "Courier New", Consolas, Monaco, monospace;
+  font-size: 12px;
+}
+
+
+/* Select text and dropdown affordance fix */
+.config-row select {
+  padding-left: 6px !important;
+  padding-right: 24px !important;
+  text-overflow: clip !important;
+  overflow: visible !important;
+  white-space: nowrap !important;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #111 50%),
+    linear-gradient(135deg, #111 50%, transparent 50%) !important;
+  background-position:
+    calc(100% - 13px) 50%,
+    calc(100% - 8px) 50% !important;
+  background-size:
+    5px 5px,
+    5px 5px !important;
+  background-repeat: no-repeat !important;
+}
+
+
+/* Small version footer */
+.version-footer {
+  margin-top: 14px;
+  text-align: right;
+  color: #10100f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .75;
+}
+
+</style>
+</head>
+<body>
+  <main>
+    <div class="topbar">
+      
+      <div>
+        <h1>BallisticNG Frontend Stats to XML Converter</h1>
+        <p>Auto generates a full Edit Stats XML profile from frontend values.</p>
+      </div>
+      <button class="info-btn" id="openInfo" title="Options and notes" aria-label="Open converter information">
+        <svg class="level-amp-icon" viewBox="0 0 64 64" aria-hidden="true">
+  <polygon class="amp-bg" points="20,8 44,8 58,32 44,56 20,56 6,32"
+           fill="#7b766d" stroke="#111111" stroke-width="2.5" stroke-linejoin="round"/>
+  <rect class="amp-bar" x="17" y="18" width="10" height="28" rx="5" fill="#e8e6dc" stroke="#111111" stroke-width="1.5"/>
+  <rect class="amp-bar" x="28" y="24" width="10" height="22" rx="5" fill="#e8e6dc" stroke="#111111" stroke-width="1.5"/>
+  <rect class="amp-bar" x="39" y="28" width="10" height="18" rx="5" fill="#e8e6dc" stroke="#111111" stroke-width="1.5"/>
+</svg>
+      </button>
+    </div>
+
+    <div class="layout">
+      <section class="card config-panel">
+        <div class="config-inner">
+          <div class="config-row">
+            <label for="shipName">Ship name</label>
+            <input id="shipName" value="Pierrot Sentinel KD12" />
+          </div>
+
+          <div class="config-row stat-control">
+            <label for="acceleration">Acceleration</label>
+            <div class="stat-input-wrap">
+              <input id="acceleration" type="number" min="1" max="10" step="1" value="3" aria-describedby="accelerationStepper" />
+              <div class="stepper compact-stepper" id="accelerationStepper"><button class="step-btn" type="button" data-target="acceleration" data-delta="-1" aria-label="Decrease acceleration"><span>−</span></button><button class="step-btn" type="button" data-target="acceleration" data-delta="1" aria-label="Increase acceleration"><span>+</span></button></div>
+            </div>
+          </div>
+
+          <div class="config-row stat-control">
+            <label for="speed">Speed</label>
+            <div class="stat-input-wrap">
+              <input id="speed" type="number" min="1" max="10" step="1" value="1" aria-describedby="speedStepper" />
+              <div class="stepper compact-stepper" id="speedStepper"><button class="step-btn" type="button" data-target="speed" data-delta="-1" aria-label="Decrease speed"><span>−</span></button><button class="step-btn" type="button" data-target="speed" data-delta="1" aria-label="Increase speed"><span>+</span></button></div>
+            </div>
+          </div>
+
+          <div class="config-row stat-control">
+            <label for="handling">Handling</label>
+            <div class="stat-input-wrap">
+              <input id="handling" type="number" min="1" max="10" step="1" value="4" aria-describedby="handlingStepper" />
+              <div class="stepper compact-stepper" id="handlingStepper"><button class="step-btn" type="button" data-target="handling" data-delta="-1" aria-label="Decrease handling"><span>−</span></button><button class="step-btn" type="button" data-target="handling" data-delta="1" aria-label="Increase handling"><span>+</span></button></div>
+            </div>
+          </div>
+
+          <div class="config-row stat-control">
+            <label for="shield">Shield</label>
+            <div class="stat-input-wrap">
+              <input id="shield" type="number" min="1" max="10" step="1" value="6" aria-describedby="shieldStepper" />
+              <div class="stepper compact-stepper" id="shieldStepper"><button class="step-btn" type="button" data-target="shield" data-delta="-1" aria-label="Decrease shield"><span>−</span></button><button class="step-btn" type="button" data-target="shield" data-delta="1" aria-label="Increase shield"><span>+</span></button></div>
+            </div>
+          </div>
+
+          <div class="config-row stat-control">
+            <label for="firepower">Firepower</label>
+            <div class="stat-input-wrap">
+              <input id="firepower" type="number" min="0" max="10" step="1" value="7" aria-describedby="firepowerStepper" />
+              <div class="stepper compact-stepper" id="firepowerStepper"><button class="step-btn" type="button" data-target="firepower" data-delta="-1" aria-label="Decrease firepower"><span>−</span></button><button class="step-btn" type="button" data-target="firepower" data-delta="1" aria-label="Increase firepower"><span>+</span></button></div>
+            </div>
+          </div>
+
+          <div class="config-row">
+            <label for="cannonType">Cannon Type</label>
+            <select id="cannonType"><option selected>Light</option><option>Medium</option><option>Heavy</option></select>
+          </div>
+
+          <div class="config-row">
+            <label for="reboundPreset">Rebound Feel</label>
+            <select id="reboundPreset">
+              <option value="1.3" selected>Default rebound</option>
+              <option value="2.0">Active rebound</option>
+              <option value="2.5">Aggressive rebound</option>
+            </select>
+          </div>
+
+          <div class="config-row">
+            <label for="alignmentPreset">Track Alignment</label>
+            <select id="alignmentPreset">
+              <option value="25" selected>Standard alignment</option>
+              <option value="30">Strong alignment</option>
+            </select>
+          </div>
+
+          <div class="buttons config-buttons">
+            <button class="secondary" id="copyBtn">Copy XML</button>
+            <button class="secondary" id="downloadBtn">Download XML</button>
+            <button class="secondary" id="resetBtn">Reset</button>
+          </div>
+
+          <div id="error" class="error"></div>
+          <div id="status" class="ok"></div>
+          <div class="note">No generate button needed. XML updates automatically when values change.</div>
+        </div>
+      </section>
+
+      <section class="card output-card">
+        <div class="section-label stats-label">Converted prefab stats</div>
+        <div id="summary" class="summary"></div>
+        <div class="section-label xml-label">Converted XML snippet<span class="xml-help">Import directly into BallisticNG Unity ingame ship stats</span></div>
+        <textarea id="xmlOutput" spellcheck="false"></textarea>
+      </section>
+    </div>
+  
+    <div class="version-footer">v1.4.1</div>
+  </main>
+
+  <dialog id="infoDialog">
+    <div class="modal-shell">
+    <div class="modal-head">
+      <button class="close-btn" id="closeInfo" aria-label="Close">×</button>
+    </div>
+    <div class="tabs" role="tablist" aria-label="Converter information tabs">
+      <button class="tab-btn active" data-tab="about" type="button">About</button>
+      <button class="tab-btn" data-tab="controls" type="button">Feel controls</button>
+      <button class="tab-btn" data-tab="changelog" type="button">Changelog</button>
+    </div>
+    <div class="modal-body">
+      <section class="tab-panel active" id="tab-about">
+        <h2>About</h2>
+        <p>This tool converts simple frontend ship stats into BallisticNG XML stat values.</p>
+        <p>The five values you enter, Acceleration, Speed, Handling, Shield, and Firepower, are player facing summary stats. BallisticNG uses many backend XML fields to create the actual ship behavior, so one frontend value may control several XML fields.</p>
+
+        <h3>How the rules were established</h3>
+        <p>The rules were built from stock ship examples. Frontend stat bars were recorded, then matched against the imported XML stat files for those ships. Fields that moved predictably with a frontend value became formulas or lookup tables. Fields that stayed the same across stock examples became defaults. Fields that affected handling feel but did not follow clean math became presets.</p>
+        <p>This means the converter is a house conversion system based on observed stock ship patterns. It is designed to create predictable custom ship stats, not to recreate every stock ship exactly.</p>
+
+        <h3>Example calculations</h3>
+        <ul>
+          <li><strong>Speed 5.</strong> Speed uses the lookup table. Speed 5 outputs Toxic 60.5, Apex 74.0, Halberd 89.5, Spectre 105.0, and Zen 119.5.</li>
+          <li><strong>Acceleration 3.</strong> Acceleration uses the lookup table. Acceleration 3 outputs Toxic 1.10, Apex 1.00, Halberd 0.90, Spectre 0.70, and Zen 0.50.</li>
+          <li><strong>Shield 6.</strong> Shield uses the lookup table. Shield 6 outputs Shield Effectiveness 0.94. This lookup follows the simple pattern 1.00 - 0.01 × Shield.</li>
+          <li><strong>Handling 4.</strong> Grip uses the Handling lookup table, so Handling 4 becomes Grip 5.50. Steer values still use formulas, so Steer Speed = 1.486 + 0.054 × 4 = 1.70.</li>
+          <li><strong>Firepower 7.</strong> Weapon Effectiveness uses the Firepower lookup table, so Firepower 7 becomes 1.032.</li>
+        </ul>
+        <h3>Stock ship examples</h3>
+        <ul>
+          <li><strong>Firepower lookup alignment.</strong> Wyvern uses Firepower 4 and Weapon Effectiveness 0.984. G Tek uses Firepower 5 and Weapon Effectiveness 1.000. Diavolt uses Firepower 8 and Weapon Effectiveness 1.048. This supports using a lookup table instead of one exact formula, because the stock values are close but not perfectly linear.</li>
+          <li><strong>Firepower 7 estimate.</strong> Firepower 7 is placed between G Tek at 5 and Diavolt at 8, so the lookup assigns Weapon Effectiveness 1.032 as a controlled higher damage value.</li>
+          <li><strong>Shield formula alignment.</strong> Wyvern and Tenrai use Shielding 3 with Shield Effectiveness 0.97. G Tek uses Shielding 5 with Shield Effectiveness 0.95. Diavolt uses Shielding 8 with Shield Effectiveness 0.92. These examples match Shield Effectiveness = 1.00 - 0.01 × Shielding.</li>
+          <li><strong>Speed lookup alignment.</strong> G Tek uses a slow profile with Zen 115. Tenrai uses Speed 5 with Zen 119.5. Nexus uses Speed 9 with Zen 125. This supports using stock ship anchors for speed conversion.</li>
+          <li><strong>Handling preset alignment.</strong> Precision Delta and G Tek use Handling 8 with Grip 6.5. Omnicom uses Handling 4 with Grip 5.65. Diavolt uses Handling 1 with Grip 5.0. This supports using Handling as a preset driven feel value.</li>
+        </ul>
+
+
+        <h3>Rule types</h3>
+        <ul>
+          <li><strong>Lookup values.</strong> Speed, Acceleration, Shield, Firepower, and Grip use lookup tables as the source of truth. For example, Speed 5 becomes Toxic 60.5, Apex 74.0, Halberd 89.5, Spectre 105.0, and Zen 119.5. Firepower 7 becomes Weapon Effectiveness 1.032.</li>
+          <li><strong>Simple formulas.</strong> Steer values use formulas because they scale smoothly from Handling. Shield can be explained as 1.00 - 0.01 × Shield, but the converter still uses the Shield lookup table for consistency.</li>
+          <li><strong>Presets.</strong> Some stats affect feel rather than one clean number. Handling is treated this way for grip. Handling 4 becomes Grip 5.50, Airbrake Drift Power 0.85, Airbrake Drift Gain 5.4, and Airbrake Drift Falloff 14.</li>
+          <li><strong>Defaults.</strong> Some XML fields do not come from frontend stats. Engine Power, Gravity, Camera, Character, and most 2280 values are filled automatically from the preserved XML template.</li>
+        </ul>
+
+        <h3>Template rule</h3>
+        <p>The XML keeps the template field order and Type attributes. Frontend driven values replace only their matching Value fields. All untouched fields stay as template defaults.</p>
+      </section>
+
+      <section class="tab-panel" id="tab-controls">
+        <h2>Optional feel controls</h2>
+        <p>Feel controls are manual tuning presets. They do not come from the five frontend stat bars. They are exposed because the stock ship XML shows a few meaningful hover and recovery variations, and those variations are easier to understand as plain language options than as raw XML values.</p>
+
+        <h3>Rebound feel</h3>
+        <p>Rebound feel controls <strong>Rebound Pitch Mod</strong>. This changes how visibly the ship pitches after landing, rebounding, or bottoming out. It mostly affects the sense of weight and recovery motion, not the frontend stat bars.</p>
+        <ul>
+          <li><strong>Default rebound, 1.3</strong>: stable landing recovery with restrained nose movement. Best for most balanced ships.</li>
+          <li><strong>Active rebound, 2.0</strong>: more visible nose movement after landing or bottoming out. Good for ships that should feel more reactive.</li>
+          <li><strong>Aggressive rebound, 2.5</strong>: strong nose movement and dramatic recovery behavior. Best for ships that should feel lively, unstable, or more expressive.</li>
+        </ul>
+
+        <h3>Rebound stock examples</h3>
+        <ul>
+          <li><strong>Most stock examples</strong> use the default 1.3 value, which is why 1.3 is the baseline.</li>
+          <li><strong>Omnicom</strong> and <strong>Hyperion</strong> helped justify an active rebound option because their feel supports more visible movement than the safest baseline.</li>
+          <li><strong>Wyvern</strong> helped justify the aggressive rebound option because it supports a stronger pitch reaction profile.</li>
+        </ul>
+
+        <h3>Track alignment feel</h3>
+        <p>Track alignment feel controls <strong>Hover Rotation Power</strong>. This changes how strongly the ship corrects itself toward the track surface. A stronger value can make a fast or unstable ship feel more controlled, but too much correction can make the hover behavior feel stiff.</p>
+        <ul>
+          <li><strong>Standard alignment, 25</strong>: normal hover correction used by most ships. Best default choice.</li>
+          <li><strong>Strong alignment, 30</strong>: stronger correction toward the track surface. Useful for very fast ships, low handling ships, or ships that need extra stability.</li>
+        </ul>
+
+        <h3>Track alignment stock examples</h3>
+        <ul>
+          <li><strong>Most stock examples</strong> use Hover Rotation Power 25, which is why standard alignment is the default.</li>
+          <li><strong>Nexus</strong> helped define the strong alignment option because it uses Hover Rotation Power 30 and shows why a faster or more demanding ship may need stronger track correction.</li>
+        </ul>
+
+        <h3>Why these are presets</h3>
+        <p>These values are not calculated from Acceleration, Speed, Handling, Shield, or Firepower because the stock data does not show a clean frontend mapping. They are treated as optional presets so the user can choose the handling feel deliberately.</p>
+
+        <h3>Recommended use</h3>
+        <ul>
+          <li>Use <strong>Default rebound</strong> and <strong>Standard alignment</strong> for a normal custom ship baseline.</li>
+          <li>Use <strong>Active rebound</strong> when the ship feels too flat or lifeless after landing.</li>
+          <li>Use <strong>Aggressive rebound</strong> only when a more dramatic recovery motion is desired.</li>
+          <li>Use <strong>Strong alignment</strong> when the ship feels unstable at higher speed or does not settle onto the track cleanly.</li>
+        </ul>
+      </section>
+
+      <section class="tab-panel" id="tab-changelog">
+        <h2>Versioning and changelog</h2>
+        <ul>
+          <li><strong>v1.3.4</strong> Simplified the converter information icon into a knob style.</li>
+          <li><strong>v1.3.3</strong> Moved converter information icon to the top right corner.</li>
+          <li><strong>v1.3.9</strong> Added full lookup tables inside stat information modals.</li>
+          <li><strong>v1.3.8</strong> Expanded stat information modals with calculation method, stock ship examples, and reasoning.</li>
+          <li><strong>v1.3.7</strong> Reduced title icon spacing and changed stat info icons to black outline style.</li>
+          <li><strong>v1.3.6</strong> Aligned information icons directly beside converted prefab stat titles.</li>
+          <li><strong>v1.3.5</strong> Added information icons for converted prefab stat cards.</li>
+          <li><strong>v1.3.4</strong> Updated About copy to match lookup table conversion logic.</li>
+          <li><strong>v1.3.3</strong> Updated converter logic to use lookup tables for Speed, Acceleration, Shield, Firepower, and Grip.</li>
+          <li><strong>v1.3.2</strong> Added stock ship examples under Example calculations.</li>
+          <li><strong>v1.3.1</strong> Reordered About tab content.</li>
+          <li><strong>v1.3.0</strong> Enlarged Copy XML and Download XML buttons for better access.</li>
+          <li><strong>v1.2.9</strong> Added labels for Converted Prefab Stats and Converted XML snippet sections.</li>
+          <li><strong>v1.2.6</strong> Updated visual theme with Wipeout Alpha inspired colors, sharper panels, stronger typography, and higher contrast controls.</li>
+          <li><strong>v1.2.5</strong> Enlarged dropdown arrows and added larger plus/minus controls for frontend stat fields.</li>
+          <li><strong>v1.2.4</strong> Increased summary card height while keeping XML preview bottom aligned with the configuration panel.</li>
+          <li><strong>v1.2.3</strong> Aligned XML preview bottom edge with ship configuration panel and made XML preview scroll internally.</li>
+          <li><strong>v1.2.2</strong> Added fixed modal height with internal scrolling to keep tab switching consistent.</li>
+          <li><strong>v1.2.1</strong> Expanded About with more rule examples and added explanation for how the formulas were established.</li>
+          <li><strong>v1.2.0</strong> Added tabbed modal with About, Feel Controls, and Changelog sections. Removed active Generate XML button. XML updates automatically.</li>
+          <li><strong>v1.1.0</strong> Updated Speed and Acceleration to lookup tables. Updated Weapon Effectiveness lookup. Added Cannon Type, Rebound Pitch Mod, and Hover Rotation Power controls. Added About and Changelog sections.</li>
+          <li><strong>v1.0.1</strong> Fixed generate button JavaScript issue and set Cannon Type default to Light.</li>
+          <li><strong>v1.0.0</strong> Initial converter with frontend inputs, XML preview, copy, and download.</li>
+        </ul>
+      </section>
+    </div>
+    </div>
+  </dialog>
+
+  <dialog id="statInfoDialog">
+    <div class="modal-shell">
+      <div class="modal-head">
+        <button class="close-btn" id="closeStatInfo" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <h2 id="statInfoTitle">Stat information</h2>
+        <p id="statInfoBody"></p>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    const XML_TEMPLATE = [{"name":"EngineMaxSpeedToxic","type":"System.Single","value":"56.5"},{"name":"EngineMaxSpeedApex","type":"System.Single","value":"69"},{"name":"EngineMaxSpeedHalberd","type":"System.Single","value":"82.5"},{"name":"EngineMaxSpeedSpectre","type":"System.Single","value":"98.5"},{"name":"EngineMaxSpeedZen","type":"System.Single","value":"115"},{"name":"AccelerationToxic","type":"System.Single","value":"1"},{"name":"AccelerationApex","type":"System.Single","value":"0.9"},{"name":"AccelerationHalberd","type":"System.Single","value":"0.8"},{"name":"AccelerationSpectre","type":"System.Single","value":"0.6"},{"name":"AccelerationZen","type":"System.Single","value":"0.4"},{"name":"PowerGainToxic","type":"System.Single","value":"0.45"},{"name":"PowerFalloffToxic","type":"System.Single","value":"0.45"},{"name":"PowerGainApex","type":"System.Single","value":"0.4"},{"name":"PowerFalloffApex","type":"System.Single","value":"0.4"},{"name":"PowerGainHalberd","type":"System.Single","value":"0.35"},{"name":"PowerFalloffHalberd","type":"System.Single","value":"0.35"},{"name":"PowerGainSpectre","type":"System.Single","value":"0.3"},{"name":"PowerFalloffSpectre","type":"System.Single","value":"0.3"},{"name":"PowerGainZen","type":"System.Single","value":"0.25"},{"name":"PowerFalloffZen","type":"System.Single","value":"0.25"},{"name":"SteerSpeed","type":"System.Single","value":"1.92"},{"name":"SteerGain","type":"System.Single","value":"1.22"},{"name":"SteerFalloff","type":"System.Single","value":"0.92"},{"name":"SteerSlide","type":"System.Single","value":"1.15"},{"name":"TiltAngle","type":"System.Single","value":"50"},{"name":"AirbrakeTurn","type":"System.Single","value":"10"},{"name":"AirbrakeGain","type":"System.Single","value":"25"},{"name":"AirbrakeFalloff","type":"System.Single","value":"150"},{"name":"SideshiftStrength","type":"System.Single","value":"0.25"},{"name":"GravityAirbourneForce","type":"System.Single","value":"36"},{"name":"GravityGroundedForce","type":"System.Single","value":"8"},{"name":"GravityWeight","type":"System.Single","value":"0.7"},{"name":"HoverHeight","type":"System.Single","value":"0.45"},{"name":"HoverForce","type":"System.Single","value":"400"},{"name":"HoverDamp","type":"System.Single","value":"-4"},{"name":"ReboundMultiplier","type":"System.Single","value":"1.35"},{"name":"ReboundHeightOffset","type":"System.Single","value":"0.25"},{"name":"ReboundPitchMod","type":"System.Single","value":"1.3"},{"name":"BounceLanding","type":"System.Single","value":"-0.01"},{"name":"BounceFloor","type":"System.Single","value":"-0.05"},{"name":"BounceSpeed","type":"System.Single","value":"50"},{"name":"HoverRotAmount","type":"System.Single","value":"25"},{"name":"HoverRotSpeed","type":"System.Single","value":"8"},{"name":"HoverRotThreshold","type":"System.Single","value":"0.5"},{"name":"RotationSpeed","type":"System.Single","value":"1"},{"name":"PitchAngle","type":"System.Single","value":"22"},{"name":"DiveSpeed","type":"System.Single","value":"25"},{"name":"PitchSpeed","type":"System.Single","value":"9"},{"name":"IdleSway","type":"System.Single","value":"1"},{"name":"Grip","type":"System.Single","value":"6.5"},{"name":"AirbrakeDriftPower","type":"System.Single","value":"0.85"},{"name":"AirbrakeDriftGain","type":"System.Single","value":"5.4"},{"name":"AirbrakeDriftFalloff","type":"System.Single","value":"14"},{"name":"ChaseCameraRotationSensitivity","type":"System.Single","value":"1"},{"name":"ChaseCameraHeightSensitivity","type":"System.Single","value":"1"},{"name":"ChaseCameraPitchSensitivity","type":"System.Single","value":"1"},{"name":"ChaseCameraFallSensitivity","type":"System.Single","value":"1"},{"name":"ChaseCameraInputSensitivity","type":"System.Single","value":"1"},{"name":"ChaseCameraLookatMultiplier","type":"System.Single","value":"1"},{"name":"ShieldEffectiveness","type":"System.Single","value":"0.95"},{"name":"WeaponEffectiveness","type":"System.Single","value":"1"},{"name":"CannonType","type":"BallisticUnityTools.Ships.ECannonStat","value":"Medium"},{"name":"CharacterSteerSpeed","type":"System.Single","value":"1"},{"name":"CharacterPitchSpeed","type":"System.Single","value":"1"},{"name":"CharacterEngineSpeed","type":"System.Single","value":"1"},{"name":"CharacterVelocitySpeed","type":"System.Single","value":"1"},{"name":"ModernUseManualTurnStats","type":"System.Boolean","value":"True"},{"name":"ModernTurnSpeed","type":"System.Single","value":"1.72"},{"name":"ModernTurnGain","type":"System.Single","value":"500"},{"name":"ModernTurnFalloff","type":"System.Single","value":"1000"},{"name":"ModernTiltTurnAngle","type":"System.Single","value":"30"},{"name":"ModernTiltAirbrakeAngle","type":"System.Single","value":"10"},{"name":"ModernTiltSpeed","type":"System.Single","value":"3.5"},{"name":"ModernTurnSpringGain","type":"System.Single","value":"1"},{"name":"ModernTurnSpringFalloff","type":"System.Single","value":"1"},{"name":"ModernGravityAir","type":"System.Single","value":"11.5"},{"name":"ModernGravityGround","type":"System.Single","value":"8.5"},{"name":"ModernGripAir","type":"System.Single","value":"3"},{"name":"ModernGripGroundedMult","type":"System.Single","value":"1"},{"name":"ModernHoverHeight","type":"System.Single","value":"0.55"},{"name":"ModernHoverDamp","type":"System.Single","value":"0.4"},{"name":"ModernLandingDamp","type":"System.Single","value":"0.3"},{"name":"ModernHoverForce","type":"System.Single","value":"45"},{"name":"ModernPitchDamping","type":"System.Single","value":"5"},{"name":"ModernPitchHeightAdjust","type":"System.Single","value":"0.1"},{"name":"ModernFloorColliderHeight","type":"System.Single","value":"0.35"},{"name":"ModernAirbrakeSlide","type":"System.Single","value":"8"},{"name":"ModernAirbrakeTurn","type":"System.Single","value":"9"},{"name":"ModernAirbrakeDrag","type":"System.Single","value":"2"},{"name":"ModernUseAirbrakeGripRatio","type":"System.Boolean","value":"True"},{"name":"ModernAirbrakeGripRatio","type":"System.Boolean","value":"0.6"},{"name":"ModernAirbrakeGrip","type":"System.Single","value":"4.75"},{"name":"ModernAirbrakeGain","type":"System.Single","value":"800"},{"name":"ModernAirbrakeFalloff","type":"System.Single","value":"500"},{"name":"ModernAirbrakeSpringGain","type":"System.Single","value":"1"},{"name":"ModernAirbrakeSpringFalloff","type":"System.Single","value":"1"},{"name":"ModernAirbrakeGripSpringGain","type":"System.Single","value":"1"},{"name":"ModernAirbrakeGripSpringFalloff","type":"System.Single","value":"1"},{"name":"ModernCameraLookatZ","type":"System.Single","value":"2.5"},{"name":"ModernCameraLookatY","type":"System.Single","value":"0"},{"name":"ModernCameraHeadTilt","type":"System.Single","value":"-0.1"},{"name":"ModernCameraCloseSpringHorz","type":"System.Single","value":"12"},{"name":"ModernCameraCloseSpringVert","type":"System.Single","value":"12"},{"name":"ModernCameraFarSpringHorz","type":"System.Single","value":"10"},{"name":"ModernCameraFarSpringVert","type":"System.Single","value":"10"},{"name":"ModernCameraOffsetZ","type":"System.Single","value":"1.12"},{"name":"ModernCameraOffsetY","type":"System.Single","value":"1.16"}];
+    const SPEED_LOOKUP = {
+      1:{Toxic:56.5,Apex:69.0,Halberd:82.5,Spectre:98.5,Zen:115.0},
+      2:{Toxic:57.0,Apex:69.5,Halberd:83.5,Spectre:99.5,Zen:115.8},
+      3:{Toxic:58.0,Apex:71.0,Halberd:85.0,Spectre:101.5,Zen:117.0},
+      4:{Toxic:59.5,Apex:72.0,Halberd:87.0,Spectre:104.0,Zen:118.5},
+      5:{Toxic:60.5,Apex:74.0,Halberd:89.5,Spectre:105.0,Zen:119.5},
+      6:{Toxic:61.5,Apex:75.5,Halberd:90.5,Spectre:107.0,Zen:120.5},
+      7:{Toxic:62.5,Apex:76.0,Halberd:91.5,Spectre:108.0,Zen:121.5},
+      8:{Toxic:64.0,Apex:77.5,Halberd:92.5,Spectre:109.0,Zen:123.5},
+      9:{Toxic:65.0,Apex:80.0,Halberd:95.0,Spectre:110.0,Zen:125.0},
+      10:{Toxic:66.5,Apex:81.5,Halberd:96.5,Spectre:112.0,Zen:126.5}
+    };
+    const ACCELERATION_LOOKUP = {
+      1:{Toxic:1.00,Apex:0.90,Halberd:0.80,Spectre:0.60,Zen:0.40},
+      2:{Toxic:1.05,Apex:0.95,Halberd:0.85,Spectre:0.65,Zen:0.45},
+      3:{Toxic:1.10,Apex:1.00,Halberd:0.90,Spectre:0.70,Zen:0.50},
+      4:{Toxic:1.20,Apex:1.05,Halberd:0.90,Spectre:0.70,Zen:0.50},
+      5:{Toxic:1.25,Apex:1.10,Halberd:0.95,Spectre:0.75,Zen:0.55},
+      6:{Toxic:1.30,Apex:1.10,Halberd:1.00,Spectre:0.80,Zen:0.60},
+      7:{Toxic:1.40,Apex:1.20,Halberd:1.00,Spectre:0.80,Zen:0.60},
+      8:{Toxic:1.65,Apex:1.45,Halberd:1.25,Spectre:1.05,Zen:0.85},
+      9:{Toxic:1.70,Apex:1.50,Halberd:1.30,Spectre:1.10,Zen:0.90},
+      10:{Toxic:1.80,Apex:1.60,Halberd:1.40,Spectre:1.20,Zen:1.00}
+    };
+    const SHIELD_LOOKUP = {
+      1:0.99,2:0.98,3:0.97,4:0.96,5:0.95,
+      6:0.94,7:0.93,8:0.92,9:0.91,10:0.90
+    };
+    const FIREPOWER_LOOKUP = {
+      0:-1.000,
+      1:0.936,
+      2:0.952,
+      3:0.968,
+      4:0.984,
+      5:1.000,
+      6:1.016,
+      7:1.032,
+      8:1.048,
+      9:1.064,
+      10:1.080
+    };
+    const GRIP_LOOKUP = {
+      0:{grip:5.00,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      1:{grip:5.00,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      2:{grip:5.00,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      3:{grip:5.25,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      4:{grip:5.50,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      5:{grip:5.75,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      6:{grip:6.00,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      7:{grip:6.25,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      8:{grip:6.50,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      9:{grip:8.00,driftPower:0.85,driftGain:5.4,driftFalloff:14},
+      10:{grip:4.80,driftPower:0.90,driftGain:5.4,driftFalloff:12}
+    };
+
+    function roundTo(value, step) { return Math.round(value / step) * step; }
+    function fmt(value, decimals = 3) {
+      if (typeof value === 'string') return value;
+      return Number(value).toFixed(decimals).replace(/\.0+$/, '').replace(/(\.\d*?)0+$/, '$1');
+    }
+    function statValue(id) {
+      const value = Number(document.getElementById(id).value);
+      const min = id === 'firepower' ? 0 : 1;
+      if (!Number.isInteger(value) || value < min || value > 10) {
+        throw new Error(id === 'firepower'
+          ? 'Firepower must be a whole number from 0 to 10.'
+          : 'Acceleration, Speed, Handling, and Shield must be whole numbers from 1 to 10.');
+      }
+      return value;
+    }
+    function calculateStats() {
+      const acceleration = statValue('acceleration');
+      const speed = statValue('speed');
+      const handling = statValue('handling');
+      const shield = statValue('shield');
+      const firepower = statValue('firepower');
+      const gripPreset = GRIP_LOOKUP[handling];
+      return {
+        EngineMaxSpeedToxic: fmt(SPEED_LOOKUP[speed].Toxic, 1),
+        EngineMaxSpeedApex: fmt(SPEED_LOOKUP[speed].Apex, 1),
+        EngineMaxSpeedHalberd: fmt(SPEED_LOOKUP[speed].Halberd, 1),
+        EngineMaxSpeedSpectre: fmt(SPEED_LOOKUP[speed].Spectre, 1),
+        EngineMaxSpeedZen: fmt(SPEED_LOOKUP[speed].Zen, 1),
+        AccelerationToxic: fmt(ACCELERATION_LOOKUP[acceleration].Toxic, 2),
+        AccelerationApex: fmt(ACCELERATION_LOOKUP[acceleration].Apex, 2),
+        AccelerationHalberd: fmt(ACCELERATION_LOOKUP[acceleration].Halberd, 2),
+        AccelerationSpectre: fmt(ACCELERATION_LOOKUP[acceleration].Spectre, 2),
+        AccelerationZen: fmt(ACCELERATION_LOOKUP[acceleration].Zen, 2),
+        SteerSpeed: fmt(roundTo(1.486 + 0.054 * handling, 0.01), 2),
+        SteerGain: fmt(roundTo(1.231 - 0.001 * handling, 0.01), 2),
+        SteerFalloff: fmt(roundTo(0.669 + 0.031 * handling, 0.01), 2),
+        SteerSlide: fmt(roundTo(1.619 - 0.059 * handling, 0.01), 2),
+        TiltAngle: '50',
+        Grip: fmt(gripPreset.grip, 2),
+        AirbrakeDriftPower: fmt(gripPreset.driftPower, 2),
+        AirbrakeDriftGain: fmt(gripPreset.driftGain, 1),
+        AirbrakeDriftFalloff: fmt(gripPreset.driftFalloff, 1),
+        ShieldEffectiveness: fmt(SHIELD_LOOKUP[shield], 2),
+        WeaponEffectiveness: fmt(FIREPOWER_LOOKUP[firepower], 3),
+        CannonType: document.getElementById('cannonType').value,
+        ReboundPitchMod: document.getElementById('reboundPreset').value,
+        HoverRotAmount: document.getElementById('alignmentPreset').value
+      };
+    }
+    function buildXml() {
+      const calculated = calculateStats();
+      return XML_TEMPLATE.map(entry => {
+        const nextValue = Object.prototype.hasOwnProperty.call(calculated, entry.name) ? calculated[entry.name] : entry.value;
+        return `<${entry.name} Type="${entry.type}" Value="${nextValue}" />`;
+      }).join('\n') + '\n';
+    }
+    const STAT_INFO = {
+      'Max Speed': {
+        title: 'Max Speed',
+        body: `
+          <p>Max Speed is generated from the frontend <strong>Speed</strong> value. BallisticNG does not store one single top speed number. It stores five backend speed values for the game speed classes: Toxic, Apex, Halberd, Spectre, and Zen.</p>
+
+          <h3>Calculation method</h3>
+          <p>The converter uses a lookup table. The lookup table is the source of truth. All lookup values are listed below.</p>
+          <code>Speed 1  = Toxic 56.5 / Apex 69.0 / Halberd 82.5 / Spectre 98.5 / Zen 115.0
+Speed 2  = Toxic 57.0 / Apex 69.5 / Halberd 83.5 / Spectre 99.5 / Zen 115.8
+Speed 3  = Toxic 58.0 / Apex 71.0 / Halberd 85.0 / Spectre 101.5 / Zen 117.0
+Speed 4  = Toxic 59.5 / Apex 72.0 / Halberd 87.0 / Spectre 104.0 / Zen 118.5
+Speed 5  = Toxic 60.5 / Apex 74.0 / Halberd 89.5 / Spectre 105.0 / Zen 119.5
+Speed 6  = Toxic 61.5 / Apex 75.5 / Halberd 90.5 / Spectre 107.0 / Zen 120.5
+Speed 7  = Toxic 62.5 / Apex 76.0 / Halberd 91.5 / Spectre 108.0 / Zen 121.5
+Speed 8  = Toxic 64.0 / Apex 77.5 / Halberd 92.5 / Spectre 109.0 / Zen 123.5
+Speed 9  = Toxic 65.0 / Apex 80.0 / Halberd 95.0 / Spectre 110.0 / Zen 125.0
+Speed 10 = Toxic 66.5 / Apex 81.5 / Halberd 96.5 / Spectre 112.0 / Zen 126.5</code>
+
+          <h3>Stock ship data used</h3>
+          <ul>
+            <li><strong>G Tek</strong> sits at the slow end and uses the low speed baseline. Its Zen value is 115.0.</li>
+            <li><strong>Tenrai</strong> uses Speed 5 and matches Zen 119.5.</li>
+            <li><strong>Wyvern</strong> uses Speed 7 and matches Zen 121.5.</li>
+            <li><strong>Diavolt</strong> uses Speed 8 and matches Zen 123.5.</li>
+            <li><strong>Nexus</strong> uses Speed 9 and matches Zen 125.0.</li>
+          </ul>
+
+          <h3>Why this works</h3>
+          <p>Speed values in the stock examples do not move in a perfectly smooth formula. Some jumps are larger than others, and values like Zen 115.8 at Speed 2 are easier to preserve exactly with a lookup table. Using a lookup table also prevents rounding differences from changing the final XML output.</p>
+
+          <h3>Transparency note</h3>
+          <p>The earlier converter used formulas to approximate this behavior. The current version uses the observed lookup values instead because the documentation now treats lookup tables as the final source of truth.</p>
+        `
+      },
+
+      'Acceleration': {
+        title: 'Acceleration',
+        body: `
+          <p>Acceleration is generated from the frontend <strong>Acceleration</strong> value. Like speed, BallisticNG stores separate acceleration values for Toxic, Apex, Halberd, Spectre, and Zen.</p>
+
+          <h3>Calculation method</h3>
+          <p>The converter uses a lookup table. The lookup table is the source of truth. All lookup values are listed below.</p>
+          <code>Acceleration 1  = Toxic 1.00 / Apex 0.90 / Halberd 0.80 / Spectre 0.60 / Zen 0.40
+Acceleration 2  = Toxic 1.05 / Apex 0.95 / Halberd 0.85 / Spectre 0.65 / Zen 0.45
+Acceleration 3  = Toxic 1.10 / Apex 1.00 / Halberd 0.90 / Spectre 0.70 / Zen 0.50
+Acceleration 4  = Toxic 1.20 / Apex 1.05 / Halberd 0.90 / Spectre 0.70 / Zen 0.50
+Acceleration 5  = Toxic 1.25 / Apex 1.10 / Halberd 0.95 / Spectre 0.75 / Zen 0.55
+Acceleration 6  = Toxic 1.30 / Apex 1.10 / Halberd 1.00 / Spectre 0.80 / Zen 0.60
+Acceleration 7  = Toxic 1.40 / Apex 1.20 / Halberd 1.00 / Spectre 0.80 / Zen 0.60
+Acceleration 8  = Toxic 1.65 / Apex 1.45 / Halberd 1.25 / Spectre 1.05 / Zen 0.85
+Acceleration 9  = Toxic 1.70 / Apex 1.50 / Halberd 1.30 / Spectre 1.10 / Zen 0.90
+Acceleration 10 = Toxic 1.80 / Apex 1.60 / Halberd 1.40 / Spectre 1.20 / Zen 1.00</code>
+
+          <h3>Stock ship data used</h3>
+          <ul>
+            <li><strong>Wyvern</strong> uses Acceleration 3 and outputs Toxic 1.10, Apex 1.00, Halberd 0.90, Spectre 0.70, and Zen 0.50.</li>
+            <li><strong>Tenrai</strong> uses Acceleration 7 and outputs Toxic 1.40, Apex 1.20, Halberd 1.00, Spectre 0.80, and Zen 0.60.</li>
+            <li><strong>Omnicom</strong> uses a high acceleration profile and supports the stronger high end values.</li>
+            <li><strong>Protonic AG4</strong> supports the aggressive upper acceleration range.</li>
+          </ul>
+
+          <h3>Why this works</h3>
+          <p>Acceleration is not fully linear in the stock data. The jump from Acceleration 7 to 8 is much larger than the lower increments. This suggests that the higher acceleration range represents a distinct performance tier rather than a smooth continuation of the same formula.</p>
+
+          <h3>Transparency note</h3>
+          <p>This converter uses a house lookup based on observed stock examples. It is intended to create predictable custom ship profiles. It is not claiming that BallisticNG internally generates acceleration from the frontend bar using this table.</p>
+        `
+      },
+
+      'Steer': {
+        title: 'Steer',
+        body: `
+          <p>Steer is generated from the frontend <strong>Handling</strong> value. It controls the ship direction response through four backend XML fields: Steer Speed, Steer Gain, Steer Falloff, and Steer Slide.</p>
+
+          <h3>Calculation method</h3>
+          <p>Steer uses formulas because these values scale more smoothly from Handling than Grip does.</p>
+          <code>Steer Speed   = 1.486 + 0.054 × Handling
+Steer Gain    = 1.231 - 0.001 × Handling
+Steer Falloff = 0.669 + 0.031 × Handling
+Steer Slide   = 1.619 - 0.059 × Handling</code>
+
+          <h3>Example</h3>
+          <code>Handling 4:
+Steer Speed   = 1.486 + 0.054 × 4 = 1.70
+Steer Gain    = 1.231 - 0.001 × 4 = 1.23
+Steer Falloff = 0.669 + 0.031 × 4 = 0.79
+Steer Slide   = 1.619 - 0.059 × 4 = 1.38</code>
+
+          <h3>Stock ship data used</h3>
+          <ul>
+            <li><strong>Diavolt</strong> uses low Handling and has lower steer response.</li>
+            <li><strong>Omnicom</strong> and <strong>Tenrai</strong> sit in the middle handling range and helped establish the middle steer behavior.</li>
+            <li><strong>G Tek</strong> and <strong>Precision Delta</strong> use high Handling and helped anchor the upper handling range.</li>
+          </ul>
+
+          <h3>Why this works</h3>
+          <p>Steer values vary with Handling, but they are not best represented by a single lookup table because several fields change together. A formula keeps the relationship predictable and prevents abrupt jumps while still matching the general stock ship pattern.</p>
+
+          <h3>Transparency note</h3>
+          <p>Steer is the main exception in the current converter. Most major frontend to backend categories use lookup tables, but Steer remains formula based because it behaves like a smooth control curve.</p>
+        `
+      },
+
+      'Grip': {
+        title: 'Grip',
+        body: `
+          <p>Grip is generated from the frontend <strong>Handling</strong> value, but it uses a preset table rather than a formula. Grip affects how strongly the ship holds the track and how controlled the ship feels during turning and airbrake drift.</p>
+
+          <h3>Calculation method</h3>
+          <p>The converter uses a Handling to Grip lookup table. All lookup values are listed below. Normal handling values share the same airbrake drift behavior. Handling 10 is treated as a special drift profile.</p>
+          <code>Handling 1  = Grip 5.00 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 2  = Grip 5.00 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 3  = Grip 5.25 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 4  = Grip 5.50 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 5  = Grip 5.75 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 6  = Grip 6.00 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 7  = Grip 6.25 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 8  = Grip 6.50 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 9  = Grip 8.00 / Drift Power 0.85 / Drift Gain 5.4 / Drift Falloff 14
+Handling 10 = Grip 4.80 / Drift Power 0.90 / Drift Gain 5.4 / Drift Falloff 12</code>
+
+          <h3>Stock ship data used</h3>
+          <ul>
+            <li><strong>Diavolt</strong> uses Handling 1 and Grip 5.0.</li>
+            <li><strong>Omnicom</strong> uses Handling 4 and sits near Grip 5.65.</li>
+            <li><strong>G Tek</strong> and <strong>Precision Delta</strong> use Handling 8 and Grip 6.5.</li>
+            <li><strong>Barracuda</strong> helped show that some high handling behavior can use unusual grip values.</li>
+            <li><strong>Hyperion</strong> helped define the special drift style where higher handling does not simply mean maximum normal grip.</li>
+          </ul>
+
+          <h3>Why this works</h3>
+          <p>Grip is a feel value. Higher Handling does not always mean a simple increase in Grip. Some ships rely on looser grip and stronger drift behavior. A preset table is clearer than a formula because it preserves intentional handling profiles.</p>
+
+          <h3>Transparency note</h3>
+          <p>This is a house mapping. It is based on stock examples and designed to give predictable results for custom ships. It should be tuned in game if a ship feels too sticky, too slippery, or too unstable.</p>
+        `
+      },
+
+      'Feel': {
+        title: 'Feel',
+        body: `
+          <p>Feel values are optional handling behavior controls. They are not directly generated from the five frontend stats. They affect hover recovery, landing response, and track alignment.</p>
+
+          <h3>Calculation method</h3>
+          <p>The converter exposes two preset controls: Rebound Feel and Track Alignment.</p>
+          <code>Rebound Feel:
+Default rebound    = Rebound Pitch Mod 1.3
+Active rebound     = Rebound Pitch Mod 2.0
+Aggressive rebound = Rebound Pitch Mod 2.5
+
+Track Alignment:
+Standard alignment = Hover Rotation Power 25
+Strong alignment   = Hover Rotation Power 30</code>
+
+          <h3>Stock ship data used</h3>
+          <ul>
+            <li><strong>Most stock ships</strong> use Rebound Pitch Mod 1.3 and Hover Rotation Power 25.</li>
+            <li><strong>Wyvern</strong> uses a stronger Rebound Pitch Mod value and helped define the aggressive rebound option.</li>
+            <li><strong>Omnicom</strong> and <strong>Hyperion</strong> support a more active rebound feel.</li>
+            <li><strong>Nexus</strong> uses Hover Rotation Power 30, which helped define the strong alignment option.</li>
+          </ul>
+
+          <h3>Why this works</h3>
+          <p>These values are better exposed as plain language presets because they describe feel rather than a player facing stat. The presets make it possible to tune a custom ship without requiring the user to understand every hover and rebound field.</p>
+
+          <h3>Transparency note</h3>
+          <p>These controls are manual feel overrides. They are included because stock ships show a few meaningful variants, but they should be tested in game.</p>
+        `
+      },
+
+      'Combat': {
+        title: 'Combat',
+        body: `
+          <p>Combat is generated from frontend <strong>Firepower</strong>, frontend <strong>Shield</strong>, and the manual <strong>Cannon Type</strong> selection.</p>
+
+          <h3>Calculation method</h3>
+          <p>Weapon Effectiveness uses a Firepower lookup table. Shield Effectiveness uses a Shield lookup table. All lookup values are listed below. Cannon Type is not calculated from frontend stats.</p>
+          <code>Firepower 0  = WeaponEffectiveness -1.000
+Firepower 1  = WeaponEffectiveness 0.936
+Firepower 2  = WeaponEffectiveness 0.952
+Firepower 3  = WeaponEffectiveness 0.968
+Firepower 4  = WeaponEffectiveness 0.984
+Firepower 5  = WeaponEffectiveness 1.000
+Firepower 6  = WeaponEffectiveness 1.016
+Firepower 7  = WeaponEffectiveness 1.032
+Firepower 8  = WeaponEffectiveness 1.048
+Firepower 9  = WeaponEffectiveness 1.064
+Firepower 10 = WeaponEffectiveness 1.080
+
+Shield 1  = ShieldEffectiveness 0.99
+Shield 2  = ShieldEffectiveness 0.98
+Shield 3  = ShieldEffectiveness 0.97
+Shield 4  = ShieldEffectiveness 0.96
+Shield 5  = ShieldEffectiveness 0.95
+Shield 6  = ShieldEffectiveness 0.94
+Shield 7  = ShieldEffectiveness 0.93
+Shield 8  = ShieldEffectiveness 0.92
+Shield 9  = ShieldEffectiveness 0.91
+Shield 10 = ShieldEffectiveness 0.90</code>
+
+          <h3>Stock ship data used</h3>
+          <ul>
+            <li><strong>Precision Delta</strong> and <strong>Orbitronix</strong> use Firepower 1 and Weapon Effectiveness 0.936.</li>
+            <li><strong>Tenrai</strong> and <strong>Protonic AG4</strong> use Firepower 2 and Weapon Effectiveness 0.952.</li>
+            <li><strong>Wyvern</strong> and <strong>Nexus</strong> use Firepower 4 and Weapon Effectiveness 0.984.</li>
+            <li><strong>G Tek</strong> and <strong>Caliburn</strong> use Firepower 5 and Weapon Effectiveness 1.000.</li>
+            <li><strong>Diavolt</strong> uses Firepower 8 and Weapon Effectiveness 1.048.</li>
+            <li><strong>Caliburn, Tenrai, Wyvern, and Nexus</strong> use Shielding 3 and Shield Effectiveness 0.97.</li>
+            <li><strong>Mako</strong> and <strong>Precision Delta</strong> use Shielding 6 and Shield Effectiveness 0.94.</li>
+            <li><strong>Diavolt</strong> uses Shielding 8 and Shield Effectiveness 0.92.</li>
+          </ul>
+
+          <h3>Why this works</h3>
+          <p>Firepower values are close to linear, but the stock examples are best preserved as a lookup table. Shield is perfectly regular, but it is still implemented as a lookup table for consistency with the documentation and to avoid any ambiguity.</p>
+
+          <h3>Transparency note</h3>
+          <p>Firepower 0 maps to -1, which appears to mean weapons disabled. Cannon Type is selected manually because it behaves like a weapon class setting, not a frontend stat conversion.</p>
+        `
+      }
+    };
+
+
+    function updateSummary(xml) {
+      const c = calculateStats();
+      const groups = [
+        ['Max Speed', `Toxic ${c.EngineMaxSpeedToxic} / Apex ${c.EngineMaxSpeedApex} / Halberd ${c.EngineMaxSpeedHalberd} / Spectre ${c.EngineMaxSpeedSpectre} / Zen ${c.EngineMaxSpeedZen}`],
+        ['Acceleration', `Toxic ${c.AccelerationToxic} / Apex ${c.AccelerationApex} / Halberd ${c.AccelerationHalberd} / Spectre ${c.AccelerationSpectre} / Zen ${c.AccelerationZen}`],
+        ['Steer', `Speed ${c.SteerSpeed} / Gain ${c.SteerGain} / Falloff ${c.SteerFalloff} / Slide ${c.SteerSlide}`],
+        ['Grip', `Grip ${c.Grip} / Drift ${c.AirbrakeDriftPower} / Gain ${c.AirbrakeDriftGain} / Falloff ${c.AirbrakeDriftFalloff}`],
+        ['Feel', `Rebound ${c.ReboundPitchMod} / Alignment ${c.HoverRotAmount}`],
+        ['Combat', `Weapon ${c.WeaponEffectiveness} / Shield ${c.ShieldEffectiveness} / Cannon ${c.CannonType}`]
+      ];
+      document.getElementById('summary').innerHTML = groups.map(([title, body]) => {
+        return `<div><strong><span>${title}</span><button type="button" class="stat-info-btn" data-stat-info="${title}" aria-label="More information about ${title}">i</button></strong>${body}</div>`;
+      }).join('');
+    }
+    function update() {
+      const error = document.getElementById('error');
+      const status = document.getElementById('status');
+      error.textContent = '';
+      status.textContent = '';
+      try {
+        const xml = buildXml();
+        document.getElementById('xmlOutput').value = xml;
+        updateSummary(xml);
+      } catch (err) { error.textContent = err.message; }
+    }
+    async function copyXml() {
+      try { await navigator.clipboard.writeText(document.getElementById('xmlOutput').value); document.getElementById('status').textContent = 'XML copied.'; }
+      catch { document.getElementById('xmlOutput').select(); document.execCommand('copy'); document.getElementById('status').textContent = 'XML copied.'; }
+    }
+    function downloadXml() {
+      const shipName = document.getElementById('shipName').value.trim() || 'custom_ship';
+      const safeName = shipName.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      const blob = new Blob([document.getElementById('xmlOutput').value], { type: 'application/xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${safeName}_stats.xml`;
+      document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    }
+    function resetForm() {
+      document.getElementById('shipName').value = 'Pierrot Sentinel KD12';
+      document.getElementById('acceleration').value = 3;
+      document.getElementById('speed').value = 1;
+      document.getElementById('handling').value = 4;
+      document.getElementById('shield').value = 6;
+      document.getElementById('firepower').value = 7;
+      document.getElementById('cannonType').value = 'Light';
+      document.getElementById('reboundPreset').value = '1.3';
+      document.getElementById('alignmentPreset').value = '25';
+      update();
+    }
+    document.getElementById('copyBtn').addEventListener('click', copyXml);
+    document.getElementById('downloadBtn').addEventListener('click', downloadXml);
+    document.getElementById('resetBtn').addEventListener('click', resetForm);
+
+    document.querySelectorAll('.step-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const target = document.getElementById(button.dataset.target);
+        const delta = Number(button.dataset.delta);
+        const current = Number.isFinite(Number(target.value)) ? Number(target.value) : 0;
+        const min = Number(target.min || 0);
+        const max = Number(target.max || 10);
+        target.value = Math.max(min, Math.min(max, current + delta));
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    });
+
+    document.querySelectorAll('.tab-btn').forEach(button => {
+      button.addEventListener('click', () => {
+        const tab = button.dataset.tab;
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn === button));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === `tab-${tab}`));
+      });
+    });
+
+    document.getElementById('openInfo').addEventListener('click', () => document.getElementById('infoDialog').showModal());
+    document.getElementById('closeInfo').addEventListener('click', () => document.getElementById('infoDialog').close());
+    document.querySelectorAll('input, select').forEach(el => el.addEventListener('input', update));
+    document.getElementById('summary').addEventListener('click', event => {
+      const button = event.target.closest('.stat-info-btn');
+      if (!button) return;
+      const title = button.dataset.statInfo;
+      const info = STAT_INFO[title] || { title, body: '' };
+      document.getElementById('statInfoTitle').textContent = info.title;
+      document.getElementById('statInfoBody').innerHTML = info.body;
+      document.getElementById('statInfoDialog').showModal();
+    });
+
+    document.getElementById('closeStatInfo').addEventListener('click', () => {
+      document.getElementById('statInfoDialog').close();
+    });
+
+    update();
+  </script>
+</body>
+</html>
